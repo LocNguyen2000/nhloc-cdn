@@ -1,11 +1,12 @@
 :root {
   color-scheme: light;
-  --background: #f7f9f7;
-  --foreground: #18251f;
+  --background: #f2f3f3;
+  --foreground: #16191f;
 }
 
 html {
   min-height: 100%;
+  background: var(--background);
 }
 
 html,

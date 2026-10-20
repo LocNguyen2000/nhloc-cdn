@@ -173,54 +173,28 @@ export default function Home() {
 
   return (
     <main className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <Link className={styles.brand} href="/" aria-label="Trang chủ Tai gau CDN">
-          <span className={styles.brandMark} aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
-              <path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v8.5" />
-            </svg>
-          </span>
-          <span>folio<span className={styles.brandDot}>.</span></span>
-        </Link>
-
-        <nav className={styles.navigation} aria-label="Điều hướng chính">
-          <a className={`${styles.navLink} ${styles.navActive}`} href="#assets">
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M3 5.5h14M3 10h14M3 14.5h14" />
-              <circle cx="6" cy="5.5" r=".75" />
-              <circle cx="6" cy="10" r=".75" />
-              <circle cx="6" cy="14.5" r=".75" />
-            </svg>
-            <span>Tất cả tệp</span>
-          </a>
-          <a className={styles.navLink} href="#upload">
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M10 13V3m0 0L6 7m4-4 4 4M4 12v4a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4" />
-            </svg>
-            <span>Tải tệp lên</span>
-          </a>
-        </nav>
-
-        <div className={styles.sidebarBottom}>
-          <div className={styles.storageCard}>
-            <div className={styles.storageHeading}>
-              <span>Thư viện</span>
-              <span className={styles.storageIcon} aria-hidden="true">
-                <svg viewBox="0 0 18 18"><path d="M3 4.5h12v10H3zM6 4.5V3h6v1.5M6 8h6" /></svg>
-              </span>
-            </div>
-            <div className={styles.storageAmount}>{formatBytes(totalBytes)} <span>đã dùng</span></div>
-            <div className={styles.storageTrack}><span /></div>
-          </div>
-        </div>
-      </aside>
-
       <section className={styles.mainPanel}>
+        <header className={styles.topbar}>
+          <Link className={styles.brand} href="/" aria-label="Trang chủ Tai gau CDN">
+            <span className={styles.brandMark} aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+                <path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v8.5" />
+              </svg>
+            </span>
+          </Link>
+        </header>
+
         <div className={styles.content}>
           <section className={styles.pageIntro}>
             <div>
-              <h1>Tệp</h1>
+              <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+                <a href="#assets">Buckets</a>
+                <span aria-hidden="true">/</span>
+                <strong>cdn-assets</strong>
+              </nav>
+              <h1>cdn-assets</h1>
+              <p>Bucket · Quản lý và tải lên các đối tượng CDN.</p>
             </div>
             <a className={styles.docsLink} href="#upload">
               <svg viewBox="0 0 18 18" aria-hidden="true">
@@ -235,13 +209,13 @@ export default function Home() {
               <span className={styles.statIcon}>
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13v10h-13zM6 5.5V4h8v1.5M7 9h6M7 12h3" /></svg>
               </span>
-              <div><span className={styles.statLabel}>Tổng số tệp</span><strong>{assets.length}</strong></div>
+              <div><span className={styles.statLabel}>Đối tượng</span><strong>{assets.length}</strong></div>
             </article>
             <article className={styles.statCard}>
               <span className={`${styles.statIcon} ${styles.statIconGreen}`}>
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v14m0-14L6 7m4-4 4 4M4 12.5v3A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-3" /></svg>
               </span>
-              <div><span className={styles.statLabel}>Dung lượng đã dùng</span><strong>{formatBytes(totalBytes)}</strong></div>
+              <div><span className={styles.statLabel}>Tổng dung lượng</span><strong>{formatBytes(totalBytes)}</strong></div>
             </article>
           </section>
 
@@ -318,28 +292,39 @@ export default function Home() {
           <section className={styles.assetsSection} id="assets">
             <div className={styles.assetHeading}>
               <div>
-                <h2>Tệp <span>{assets.length}</span></h2>
+                <h2>Đối tượng <span>{assets.length}</span></h2>
               </div>
-              <label className={styles.searchBox}>
-                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.8" /><path d="m13.2 13.2 4 4" /></svg>
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Tìm tệp"
-                  aria-label="Tìm tệp"
-                />
-                <kbd>/</kbd>
-              </label>
+              <div className={styles.assetActions}>
+                <label className={styles.searchBox}>
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.8" /><path d="m13.2 13.2 4 4" /></svg>
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Tìm tệp"
+                    aria-label="Tìm tệp"
+                  />
+                  <kbd>/</kbd>
+                </label>
+                <button
+                  className={styles.assetRefresh}
+                  type="button"
+                  onClick={() => void loadAssets()}
+                  disabled={loading}
+                >
+                  <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M14.5 6A6 6 0 0 0 4 4.5L3 6m0 0V3m0 3h3m-2.5 6A6 6 0 0 0 14 13.5l1-1m0 0v3m0-3h-3" /></svg>
+                  Làm mới
+                </button>
+              </div>
             </div>
 
             <div className={styles.tableWrap}>
               <table className={styles.assetTable}>
                 <thead>
                   <tr>
-                    <th>TỆP</th>
-                    <th>ĐƯỜNG DẪN CDN</th>
+                    <th>TÊN</th>
+                    <th>KHÓA ĐỐI TƯỢNG</th>
                     <th>KÍCH THƯỚC</th>
-                    <th>NGÀY TẢI LÊN</th>
+                    <th>NGÀY SỬA ĐỔI</th>
                     <th><span className={styles.srOnly}>Thao tác</span></th>
                   </tr>
                 </thead>
@@ -386,12 +371,6 @@ export default function Home() {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className={styles.tableFooter}>
-              <button type="button" onClick={() => void loadAssets()} disabled={loading}>
-                <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M14.5 6A6 6 0 0 0 4 4.5L3 6m0 0V3m0 3h3m-2.5 6A6 6 0 0 0 14 13.5l1-1m0 0v3m0-3h-3" /></svg>
-                Làm mới
-              </button>
             </div>
           </section>
         </div>
