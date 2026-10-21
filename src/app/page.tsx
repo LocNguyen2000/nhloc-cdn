@@ -59,11 +59,13 @@ async function fetchAssets(): Promise<Asset[]> {
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => new Set());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [assetPath, setAssetPath] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -164,11 +166,48 @@ export default function Home() {
     }
   }
 
+  async function deleteAssets(ids: string[]) {
+    if (ids.length === 0) return;
+    const prompt = ids.length === 1
+      ? "Bạn có chắc muốn xóa đối tượng này? Thao tác này không thể hoàn tác."
+      : `Bạn có chắc muốn xóa ${ids.length} đối tượng đã chọn? Thao tác này không thể hoàn tác.`;
+    if (!window.confirm(prompt)) return;
+
+    setDeleting(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/assets", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(getErrorMessage(payload, "Không thể xóa đối tượng."));
+
+      setAssets((currentAssets) => currentAssets.filter((asset) => !ids.includes(asset.id)));
+      setSelectedAssetIds((currentIds) => {
+        const remainingIds = new Set(currentIds);
+        ids.forEach((id) => remainingIds.delete(id));
+        return remainingIds;
+      });
+      setNotice(ids.length === 1 ? "Đã xóa đối tượng." : `Đã xóa ${ids.length} đối tượng.`);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Không thể xóa đối tượng.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const filteredAssets = assets.filter((asset) =>
     `${asset.filename} ${asset.path} ${asset.mime_type ?? ""}`
       .toLowerCase()
       .includes(search.trim().toLowerCase()),
   );
+  const allVisibleAssetsSelected =
+    filteredAssets.length > 0 && filteredAssets.every((asset) => selectedAssetIds.has(asset.id));
+  const someVisibleAssetsSelected =
+    filteredAssets.some((asset) => selectedAssetIds.has(asset.id)) && !allVisibleAssetsSelected;
   const totalBytes = assets.reduce((total, asset) => total + (asset.size_bytes ?? 0), 0);
 
   return (
@@ -295,6 +334,17 @@ export default function Home() {
                 <h2>Đối tượng <span>{assets.length}</span></h2>
               </div>
               <div className={styles.assetActions}>
+                {selectedAssetIds.size > 0 && (
+                  <button
+                    className={styles.deleteSelectedButton}
+                    type="button"
+                    onClick={() => void deleteAssets([...selectedAssetIds])}
+                    disabled={deleting || loading}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12m-10 0 .7 11h6.6L14 6M8 6V4h4v2m-3 3v5m2-5v5" /></svg>
+                    Xóa ({selectedAssetIds.size})
+                  </button>
+                )}
                 <label className={styles.searchBox}>
                   <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.8" /><path d="m13.2 13.2 4 4" /></svg>
                   <input
@@ -321,6 +371,28 @@ export default function Home() {
               <table className={styles.assetTable}>
                 <thead>
                   <tr>
+                    <th className={styles.selectionColumn}>
+                      <input
+                        type="checkbox"
+                        checked={allVisibleAssetsSelected}
+                        ref={(input) => {
+                          if (input) input.indeterminate = someVisibleAssetsSelected;
+                        }}
+                        onChange={(event) => {
+                          const selectVisible = event.target.checked;
+                          setSelectedAssetIds((currentIds) => {
+                            const nextIds = new Set(currentIds);
+                            filteredAssets.forEach((asset) => {
+                              if (selectVisible) nextIds.add(asset.id);
+                              else nextIds.delete(asset.id);
+                            });
+                            return nextIds;
+                          });
+                        }}
+                        disabled={loading || deleting || filteredAssets.length === 0}
+                        aria-label="Chọn tất cả đối tượng đang hiển thị"
+                      />
+                    </th>
                     <th>TÊN</th>
                     <th>KHÓA ĐỐI TƯỢNG</th>
                     <th>KÍCH THƯỚC</th>
@@ -330,16 +402,33 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={5} className={styles.emptyState}>Đang tải…</td></tr>
+                    <tr><td colSpan={6} className={styles.emptyState}>Đang tải…</td></tr>
                   ) : filteredAssets.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className={styles.emptyState}>
+                      <td colSpan={6} className={styles.emptyState}>
                         <strong>{search ? "Không tìm thấy tệp" : "Chưa có tệp"}</strong>
                       </td>
                     </tr>
                   ) : (
                     filteredAssets.map((asset) => (
-                      <tr key={asset.id}>
+                      <tr key={asset.id} className={selectedAssetIds.has(asset.id) ? styles.selectedRow : undefined}>
+                        <td className={styles.selectionColumn}>
+                          <input
+                            type="checkbox"
+                            checked={selectedAssetIds.has(asset.id)}
+                            onChange={(event) => {
+                              const selected = event.target.checked;
+                              setSelectedAssetIds((currentIds) => {
+                                const nextIds = new Set(currentIds);
+                                if (selected) nextIds.add(asset.id);
+                                else nextIds.delete(asset.id);
+                                return nextIds;
+                              });
+                            }}
+                            disabled={deleting}
+                            aria-label={`Chọn ${asset.filename}`}
+                          />
+                        </td>
                         <td>
                           <div className={styles.fileCell}>
                             <span className={styles.fileIcon} aria-hidden="true">
@@ -365,6 +454,16 @@ export default function Home() {
                           <a className={styles.openButton} href={`/cdn/${encodeURIComponent(asset.path)}`} target="_blank" rel="noreferrer" aria-label={`Mở ${asset.filename} từ CDN`} title="Mở tệp CDN">
                             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 4h5v5m0-5-7 7" /><path d="M14 11v4.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5H9" /></svg>
                           </a>
+                          <button
+                            className={styles.deleteButton}
+                            type="button"
+                            onClick={() => void deleteAssets([asset.id])}
+                            disabled={deleting}
+                            aria-label={`Xóa ${asset.filename}`}
+                            title="Xóa đối tượng"
+                          >
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12m-10 0 .7 11h6.6L14 6M8 6V4h4v2m-3 3v5m2-5v5" /></svg>
+                          </button>
                         </td>
                       </tr>
                     ))

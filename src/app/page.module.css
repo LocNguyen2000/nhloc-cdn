@@ -469,6 +469,46 @@
   gap: 8px;
 }
 
+.deleteSelectedButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid #b42318;
+  border-radius: 18px;
+  background: #fff;
+  color: #b42318;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.deleteSelectedButton:hover:not(:disabled),
+.deleteButton:hover:not(:disabled) {
+  border-color: #8c1d18;
+  background: #fff5f5;
+  color: #8c1d18;
+}
+
+.deleteSelectedButton:disabled,
+.deleteButton:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.deleteSelectedButton svg {
+  width: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
 .searchBox {
   display: flex;
   width: 260px;
@@ -597,6 +637,28 @@
   padding-left: 16px;
 }
 
+.selectionColumn {
+  width: 42px;
+  padding-right: 5px !important;
+  text-align: center !important;
+}
+
+.selectionColumn input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.selectionColumn input:disabled {
+  cursor: not-allowed;
+}
+
+.selectedRow {
+  background: #f2f8fd;
+}
+
 .assetTable th:last-child,
 .assetTable td:last-child {
   padding-right: 15px;
@@ -672,11 +734,12 @@
 }
 
 .actionCell {
-  min-width: 76px;
+  min-width: 110px;
 }
 
 .copyButton,
-.openButton {
+.openButton,
+.deleteButton {
   display: inline-grid;
   width: 30px;
   height: 30px;
@@ -689,6 +752,10 @@
   vertical-align: middle;
 }
 
+.deleteButton {
+  color: #b42318;
+}
+
 .copyButton:hover,
 .openButton:hover {
   border-color: #0972d3;
@@ -696,13 +763,19 @@
 }
 
 .copyButton svg,
-.openButton svg {
+.openButton svg,
+.deleteButton svg {
   width: 16px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.4;
+}
+
+.deleteButton:hover:not(:disabled) {
+  border-color: #b42318;
+  background: #fff5f5;
 }
 
 .emptyState {
