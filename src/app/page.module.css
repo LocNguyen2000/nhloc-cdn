@@ -314,6 +314,27 @@
   line-height: 1.5;
 }
 
+.enhancementHeading {
+  margin-top: 16px;
+  color: #16191f;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.enhancementHint {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.enhancementControls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px 16px;
+  margin-top: 12px;
+}
+
 .formatterControls {
   display: flex;
   align-items: center;
@@ -400,6 +421,19 @@
 
 .qualityControl input {
   width: 100%;
+  accent-color: var(--blue);
+}
+
+.upscaleControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  color: #414750;
+  font-size: 12px;
+}
+
+.upscaleControl input {
   accent-color: var(--blue);
 }
 

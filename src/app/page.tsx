@@ -160,6 +160,10 @@ export default function Home() {
   const [convertedImages, setConvertedImages] = useState<ConvertedImage[]>([]);
   const [imageQuality, setImageQuality] = useState(0.8);
   const [imageScale, setImageScale] = useState(100);
+  const [imageSharpen, setImageSharpen] = useState(0);
+  const [imageBrightness, setImageBrightness] = useState(1);
+  const [imageContrast, setImageContrast] = useState(1);
+  const [imageUpscaleEnabled, setImageUpscaleEnabled] = useState(false);
   const [convertingImage, setConvertingImage] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [imageError, setImageError] = useState("");
@@ -372,35 +376,46 @@ export default function Home() {
   }
 
   async function convertImageFile(imageFile: File): Promise<File> {
-    let bitmap: ImageBitmap | undefined;
-    try {
-      bitmap = await createImageBitmap(imageFile);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(bitmap.width * imageScale / 100));
-      canvas.height = Math.max(1, Math.round(bitmap.height * imageScale / 100));
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error(t("errorProcessImage"));
-      context.drawImage(bitmap, 0, 0);
+    const formData = new FormData();
+    formData.set("file", imageFile);
+    formData.set("sharpen", String(imageSharpen));
+    formData.set("brightness", String(imageBrightness));
+    formData.set("contrast", String(imageContrast));
+    formData.set("scale", String(imageScale));
+    formData.set("quality", String(imageQuality));
+    formData.set("upscale", String(imageUpscaleEnabled));
 
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (result) => {
-            if (result) resolve(result);
-            else reject(new Error(t("errorCreateWebp")));
-          },
-          "image/webp",
-          imageQuality,
-        );
-      });
-      if (blob.type !== "image/webp") {
-        throw new Error(t("errorWebpUnsupported"));
+    const response = await fetch("/api/enhance", { method: "POST", body: formData });
+    if (!response.ok) {
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error(t("errorImageEnhancement"));
       }
 
-      const outputName = imageFile.name.replace(/\.[^.]+$/, "") + ".webp";
-      return new File([blob], outputName, { type: "image/webp" });
-    } finally {
-      bitmap?.close();
+      const errorKey = getErrorMessage(payload, "imageProcessingFailed");
+      const errorMessages: Record<string, string> = {
+        invalidRequest: t("errorInvalidEnhancementRequest"),
+        missingImage: t("errorNoImageReceived"),
+        emptyImage: t("errorEmptyImage"),
+        imageTooLarge: t("errorImageTooLarge"),
+        invalidSettings: t("errorInvalidEnhancementSettings"),
+        unsupportedImageType: t("errorUnsupportedImageType"),
+        invalidImage: t("errorInvalidImage"),
+        outputTooLarge: t("errorImageOutputTooLarge"),
+        imageProcessingFailed: t("errorImageEnhancement"),
+      };
+      throw new Error(errorMessages[errorKey] ?? t("errorImageEnhancement"));
     }
+
+    if (response.headers.get("content-type")?.split(";")[0] !== "image/webp") {
+      throw new Error(t("errorWebpUnsupported"));
+    }
+
+    const blob = await response.blob();
+    const outputName = imageFile.name.replace(/\.[^.]+$/, "") + ".webp";
+    return new File([blob], outputName, { type: "image/webp" });
   }
 
   async function convertImages() {
@@ -1054,6 +1069,72 @@ export default function Home() {
                 </button>
               )}
             </div>
+            <h2 className={styles.enhancementHeading}>{t("enhancementHeading")}</h2>
+            <p className={styles.enhancementHint}>{t("enhancementPrivacyHint")}</p>
+            <div className={styles.enhancementControls}>
+              <label className={styles.qualityControl}>
+                <span>{t("sharpening")} <strong>{imageSharpen.toFixed(1)}</strong></span>
+                <input
+                  type="range"
+                  min="0"
+                  max="3"
+                  step="0.25"
+                  value={imageSharpen}
+                  disabled={convertingImage}
+                  onChange={(event) => {
+                    setImageSharpen(Number(event.target.value));
+                    setConvertedImages([]);
+                  }}
+                  aria-label={t("sharpeningLabel")}
+                />
+              </label>
+              <label className={styles.qualityControl}>
+                <span>{t("brightness")} <strong>{Math.round(imageBrightness * 100)}%</strong></span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.05"
+                  value={imageBrightness}
+                  disabled={convertingImage}
+                  onChange={(event) => {
+                    setImageBrightness(Number(event.target.value));
+                    setConvertedImages([]);
+                  }}
+                  aria-label={t("brightnessLabel")}
+                />
+              </label>
+              <label className={styles.qualityControl}>
+                <span>{t("contrast")} <strong>{Math.round(imageContrast * 100)}%</strong></span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.05"
+                  value={imageContrast}
+                  disabled={convertingImage}
+                  onChange={(event) => {
+                    setImageContrast(Number(event.target.value));
+                    setConvertedImages([]);
+                  }}
+                  aria-label={t("contrastLabel")}
+                />
+              </label>
+              <label className={styles.upscaleControl}>
+                <input
+                  type="checkbox"
+                  checked={imageUpscaleEnabled}
+                  disabled={convertingImage}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setImageUpscaleEnabled(enabled);
+                    if (!enabled && imageScale > 100) setImageScale(100);
+                    setConvertedImages([]);
+                  }}
+                />
+                <span>{t("allowUpscaling")}</span>
+              </label>
+            </div>
             <div className={styles.formatterControls}>
               <label className={styles.qualityControl}>
                 <span>{t("quality")} <strong>{Math.round(imageQuality * 100)}%</strong></span>
@@ -1076,7 +1157,7 @@ export default function Home() {
                 <input
                   type="range"
                   min="25"
-                  max="100"
+                  max={imageUpscaleEnabled ? "200" : "100"}
                   step="5"
                   value={imageScale}
                   disabled={convertingImage}

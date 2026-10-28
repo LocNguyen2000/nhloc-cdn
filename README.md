@@ -20,7 +20,7 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## Image formatter
 
-The dashboard has separate CDN management and image formatter tabs with Vietnamese and English interface languages, configured in `src/locales/vi.json` and `src/locales/en.json`. CDN bulk uploads create a UUID-named destination folder automatically; you can rename the folder before uploading. The formatter converts multiple PNG and JPEG images to WebP in the browser, lets you adjust quality and image dimensions while preserving the aspect ratio, previews each size difference, and downloads the converted images in one ZIP file. Selected source images persist in this browser until individually removed. Conversion happens locally in your browser.
+The dashboard has separate CDN management and image formatter tabs with Vietnamese and English interface languages, configured in `src/locales/vi.json` and `src/locales/en.json`. CDN bulk uploads create a UUID-named destination folder automatically; you can rename the folder before uploading. The formatter sends selected PNG and JPEG images to the app server for Sharp processing, where you can adjust sharpening, brightness, contrast, output quality, and dimensions, with optional upscaling up to 200%. Enhanced images are returned as WebP, previewed, and downloaded together in one ZIP file. Images are limited to 25 MB each for enhancement. Selected source images persist in this browser until individually removed.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
