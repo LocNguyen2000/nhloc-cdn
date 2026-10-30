@@ -24,6 +24,10 @@ The dashboard has separate CDN management and image formatter tabs with Vietname
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Video time-lapse maker
+
+The video time-lapse tab accepts one video up to 250 MB, speeds it up by 2×, 4×, 8×, or 16×, and downloads the result as an MP4. Videos are processed on the app server with `fluent-ffmpeg` and the `ffmpeg-static` binary; audio is removed from every output.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -10,6 +10,7 @@ import styles from "./page.module.css";
 
 type Language = "vi" | "en";
 type AssetTypeFilter = "all" | "images" | "videos";
+type DashboardTab = "cdn" | "formatter" | "timelapse";
 
 const languageStorageKey = "nhloc-cdn-language";
 const languageChangeEvent = "nhloc-cdn-language-change";
@@ -144,13 +145,14 @@ async function fetchAssets(errorMessage: string, invalidResponseMessage: string)
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const imageFilesRef = useRef<File[]>([]);
   const language = useSyncExternalStore(
     subscribeToLanguage,
     getSavedLanguage,
     getServerLanguage,
   );
-  const [activeTab, setActiveTab] = useState<"cdn" | "formatter">("cdn");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("cdn");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => new Set());
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -167,6 +169,11 @@ export default function Home() {
   const [convertingImage, setConvertingImage] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoSpeed, setVideoSpeed] = useState(4);
+  const [processingVideo, setProcessingVideo] = useState(false);
+  const [videoError, setVideoError] = useState("");
+  const [draggingVideo, setDraggingVideo] = useState(false);
   const [assetPath, setAssetPath] = useState("");
   const [search, setSearch] = useState("");
   const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>("all");
@@ -491,6 +498,7 @@ export default function Home() {
       } finally {
         link.remove();
       }
+
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
     } catch (downloadError) {
       setImageError(
@@ -500,6 +508,77 @@ export default function Home() {
       );
     } finally {
       setDownloadingZip(false);
+    }
+  }
+
+  function chooseVideo(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("video/") && !/\.(3gp|avi|m4v|mkv|mov|mp4|mpeg|mpg|webm)$/i.test(file.name)) {
+      setVideoError(t("errorUnsupportedVideoType"));
+      return;
+    }
+    if (file.size > 250 * 1024 * 1024) {
+      setVideoError(t("errorVideoTooLarge"));
+      return;
+    }
+    setVideoFile(file);
+    setVideoError("");
+  }
+
+  async function createTimelapse() {
+    if (!videoFile) return;
+    setProcessingVideo(true);
+    setVideoError("");
+    const formData = new FormData();
+    formData.set("file", videoFile);
+    formData.set("speed", String(videoSpeed));
+
+    try {
+      const response = await fetch("/api/timelapse", { method: "POST", body: formData });
+      if (!response.ok) {
+        let payload: unknown;
+        try {
+          payload = await response.json();
+        } catch {
+          throw new Error(t("errorVideoProcessing"));
+        }
+
+        const errorMessages: Record<string, string> = {
+          invalidRequest: t("errorInvalidVideoRequest"),
+          missingVideo: t("errorMissingVideo"),
+          emptyVideo: t("errorEmptyVideo"),
+          videoTooLarge: t("errorVideoTooLarge"),
+          unsupportedVideoType: t("errorUnsupportedVideoType"),
+          invalidSpeed: t("errorInvalidVideoSpeed"),
+          processingUnavailable: t("errorVideoProcessing"),
+          videoProcessingFailed: t("errorVideoProcessing"),
+        };
+        const errorKey = getErrorMessage(payload, "videoProcessingFailed");
+        throw new Error(errorMessages[errorKey] ?? t("errorVideoProcessing"));
+      }
+
+      if (response.headers.get("content-type")?.split(";")[0] !== "video/mp4") {
+        throw new Error(t("errorVideoProcessing"));
+      }
+
+      const output = await response.blob();
+      const outputUrl = URL.createObjectURL(output);
+      const link = document.createElement("a");
+      link.href = outputUrl;
+      link.download = `${videoFile.name.replace(/\.[^.]+$/, "")}-timelapse.mp4`;
+      document.body.appendChild(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(outputUrl), 1000);
+    } catch (processingError) {
+      setVideoError(
+        processingError instanceof Error ? processingError.message : t("errorVideoProcessing"),
+      );
+    } finally {
+      setProcessingVideo(false);
     }
   }
 
@@ -694,6 +773,14 @@ export default function Home() {
               onClick={() => setActiveTab("formatter")}
             >
               {t("formatterTab")}
+            </button>
+            <button
+              className={activeTab === "timelapse" ? styles.viewTabActive : styles.viewTab}
+              type="button"
+              aria-pressed={activeTab === "timelapse"}
+              onClick={() => setActiveTab("timelapse")}
+            >
+              {t("timelapseTab")}
             </button>
           </nav>
 
@@ -1245,6 +1332,115 @@ export default function Home() {
               </div>
             )}
           </section>
+            </div>
+          )}
+
+          {activeTab === "timelapse" && (
+            <div id="timelapse-panel" className={styles.tabPanel}>
+              <section className={styles.pageIntro}>
+                <div>
+                  <h1>{t("timelapseTitle")}</h1>
+                  <p>{t("timelapseDescription")}</p>
+                </div>
+              </section>
+              <section className={styles.timeLapse}>
+                <div className={styles.sectionHeading}>
+                  <div>
+                    <h2>{t("timelapseHeading")}</h2>
+                    <p>{t("videoPrivacyHint")}</p>
+                  </div>
+                </div>
+                <div
+                  className={`${styles.dropzone} ${styles.videoDropzone} ${draggingVideo ? styles.dropzoneActive : ""} ${videoFile ? styles.dropzoneSelected : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDraggingVideo(true);
+                  }}
+                  onDragLeave={(event) => {
+                    if (
+                      !(event.relatedTarget instanceof Node) ||
+                      !event.currentTarget.contains(event.relatedTarget)
+                    ) {
+                      setDraggingVideo(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDraggingVideo(false);
+                    chooseVideo(event.dataTransfer.files[0]);
+                  }}
+                >
+                  <input
+                    ref={videoInputRef}
+                    className={styles.fileInput}
+                    type="file"
+                    accept="video/*,.3gp,.avi,.m4v,.mkv,.mov,.mp4,.mpeg,.mpg,.webm"
+                    onChange={(event) => {
+                      chooseVideo(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                    disabled={processingVideo}
+                    aria-label={t("videoTypeHint")}
+                  />
+                  <span className={styles.uploadIcon} aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5zM10 9l5 3-5 3z" /></svg>
+                  </span>
+                  {videoFile ? (
+                    <div className={styles.selectedFile}>
+                      <strong title={videoFile.name}>{videoFile.name}</strong>
+                      <span>{formatBytes(videoFile.size)}</span>
+                    </div>
+                  ) : (
+                    <div className={styles.dropCopy}>
+                      <strong>
+                        {t("dropVideo")}{" "}
+                        <button type="button" onClick={() => videoInputRef.current?.click()}>
+                          {t("chooseVideo")}
+                        </button>
+                      </strong>
+                      <span>{t("videoTypeHint")}</span>
+                    </div>
+                  )}
+                  {videoFile && (
+                    <button
+                      className={styles.changeFile}
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={processingVideo}
+                    >
+                      {t("changeVideo")}
+                    </button>
+                  )}
+                </div>
+                <div className={styles.videoControls}>
+                  <label className={styles.videoSpeedControl}>
+                    <span>{t("videoSpeed")}</span>
+                    <select
+                      value={videoSpeed}
+                      onChange={(event) => setVideoSpeed(Number(event.target.value))}
+                      disabled={processingVideo}
+                    >
+                      {[2, 4, 8, 16].map((speed) => (
+                        <option key={speed} value={speed}>{speed}×</option>
+                      ))}
+                    </select>
+                  </label>
+                  <p>{t("videoAudioRemovedHint")}</p>
+                  <button
+                    className={styles.uploadButton}
+                    type="button"
+                    onClick={() => void createTimelapse()}
+                    disabled={!videoFile || processingVideo}
+                  >
+                    {processingVideo ? (
+                      <><span className={styles.spinner} /> {t("processingVideo")}</>
+                    ) : (
+                      t("createTimelapse")
+                    )}
+                  </button>
+                </div>
+                {videoError && <p className={styles.alertError} role="alert">{videoError}</p>}
+              </section>
             </div>
           )}
         </div>
